@@ -31,7 +31,7 @@ module Data.Aeson.DefaultField (
   , DefString(..)
   , DefBool(..)
   , DefDefault(..)
-  , DefDefaultCoerce(..)
+  , DefDefaultNewType(..)
 ) where
 
 import GHC.TypeLits (Nat, KnownNat, Symbol, KnownSymbol, natVal, symbolVal)
@@ -98,10 +98,21 @@ instance (FromJSON a, Default a) => FromJSON (DefDefault a) where
   parseJSON AE.Null = return (DefDefaultCls def)
   parseJSON v = DefDefaultCls <$> parseJSON v
 
--- | Default field with a separate type with a Default class that is coerced to the final field when needed
-newtype DefDefaultCoerce a b = DefDefaultNewType b
+-- | Default field with a separate type (for the default instance) with a Default class
+-- that is coerced to the embedded field of the newtype.
+--
+-- E.g. you cannot create a direct settings for real numbers; however, you can do this:
+--
+-- > newtype Pi = Pi Double
+-- > instance Default Pi where
+-- >   def = 3.141592654
+-- >
+-- > data MyObjectT d = MyObject {
+-- >   phaseAngle :: DefaultField d (DefDefaultNewType Pi)
+-- > }
+newtype DefDefaultNewType a = DefDefaultNewType (EmbeddedType (Rep a))
   deriving (Generic)
-instance (Default a, FromJSON b, Coercible a b) => FromJSON (DefDefaultCoerce a b) where
+instance (Default a, FromJSON (EmbeddedType (Rep a)), Coercible a (EmbeddedType (Rep a))) => FromJSON (DefDefaultNewType a) where
   omittedField = return (DefDefaultNewType $ coerce (def :: a))
   parseJSON AE.Null = return (DefDefaultNewType $ coerce (def :: a))
   parseJSON v = DefDefaultNewType <$> parseJSON v
@@ -153,24 +164,25 @@ parseWithDefaults opts v = do
 --   def = Red
 -- 
 -- -- Alternatively, we may create a separate default type that would be coerced back
--- -- to Color with 'DefDefaultCoerce'. This allows for different default values
+-- -- to Color with 'DefDefaultNewType'. This allows for different default values
 -- -- with the same type for different fields.
 -- newtype BlueDefault = BlueDefault Color
+--   deriving Generic -- The Generic instance must be derived for the 'DefDefaultNewType'
 -- instance 'Default' BlueDefault where
 --   def = BlueDefault Blue
 -- 
--- -- Simply create the data object we want to parse from the file; add a type parameters
+-- -- Simply create the data object we want to parse from the file; add a type parameter
 -- -- so that we can use the type family magic to create 2 different type representations.
 -- -- Normal fields act normally. Use 'DefaultField' with the appropriate settings
 -- -- to configure the parsing of the missing fields.
 -- data ConfigFileT d = ConfigFile {
 --     defaultEnabled :: 'DefaultField' d ('DefBool' True)
---   , defaultDisabled :: DefaultField' d ('DefBool' False)
+--   , defaultDisabled :: 'DefaultField' d ('DefBool' False)
 --   , defaultText :: 'DefaultField' d ('DefText' "default text")
 --   , defaultInt :: 'DefaultField' d ('DefInt' 42)
 --   , defaultNegativeInt :: 'DefaultField' d ('DefNegativeInt' 42)
 --   , defaultRed :: 'DefaultField' d ('DefDefault' Color)
---   , defaultBlue :: 'DefaultField' d ('DefDefaultCoerce' BlueDefault Color)
+--   , defaultBlue :: 'DefaultField' d ('DefDefaultNewType' BlueDefault)
 --   , normalField :: T.Text
 --   , normalOptional :: Maybe Int
 -- } deriving (Generic)
@@ -186,7 +198,7 @@ parseWithDefaults opts v = do
 --
 -- @
 -- 
--- >>> decode "{\"defaultDisabled\":true,\"normalField\":\"text\"}" :: Maybe ConfigFile
+-- >>> AE.decode "{\"defaultDisabled\":true,\"normalField\":\"text\"}" :: Maybe ConfigFile
 -- >>> Just (ConfigFile {
 --           defaultEnabled = True
 --         , defaultDisabled = True
@@ -201,14 +213,17 @@ parseWithDefaults opts v = do
 
 -- $extend
 --
--- 
+-- The provided 'DefText', 'DefInt', etc. newtypes should provide enough flexibility to configure the missing
+-- fields for the objects. If a special type of configuration is needed, a /newtype/
+-- based on a final type must be created with 'Generic' and 'FromJSON' instances.
+-- See the source code for examples.
 
 -- $caveats
 --
--- The final step in the parsing is coercing the structure with newtypes 'InsertDefaults'
--- to the 'Final' stage. Unfortunately, the type families in Haskell have a nominal role type,
--- so the coercion is not possible. Somehow, we can create a 'Generic' representation and coerce
--- it back.
+-- The final step in the parsing is coercing the structure with newtypes (e.g. 'DefBool') to 
+-- a structure with the final types (e.g. Bool). Unfortunately, the type families in Haskell 
+-- cause the type not to be directly coercible between the intermediate and the 'Final' stage.
+-- However, it is possible through the Generic instances.
 --
 -- This solution probably brings some performance degradation in the sense that the structure
 -- must be recreated. Benchmark before use in performance-sensitive situations.
