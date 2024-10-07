@@ -31,7 +31,9 @@ module Data.Aeson.DefaultField (
   , DefString(..)
   , DefBool(..)
   , DefDefault(..)
-  , DefDefaultNewType(..)
+  -- * Support for newtype default constants
+  , DefaultConstant(..)
+  , DefDefaultConstant(..)
 ) where
 
 import GHC.TypeLits (Nat, KnownNat, Symbol, KnownSymbol, natVal, symbolVal)
@@ -45,6 +47,7 @@ import Data.Aeson.Types (Parser)
 import Data.Proxy (Proxy(..))
 import Data.String (fromString)
 import Data.Default (Default (def))
+
 
 -- | Boolean default field
 newtype DefBool (a :: Bool) = DefBool Bool
@@ -91,31 +94,35 @@ instance KnownSymbol sym => FromJSON (DefString sym) where
   parseJSON v = DefString <$> parseJSON v
 
 -- | Default field using the "Default" class
-newtype DefDefault a = DefDefaultCls a
+newtype DefDefault a = DefDefault a
   deriving (Generic)
 instance (FromJSON a, Default a) => FromJSON (DefDefault a) where
-  omittedField = return (DefDefaultCls def)
-  parseJSON AE.Null = return (DefDefaultCls def)
-  parseJSON v = DefDefaultCls <$> parseJSON v
+  omittedField = return (DefDefault def)
+  parseJSON AE.Null = return (DefDefault def)
+  parseJSON v = DefDefault <$> parseJSON v
 
--- | Default field with a separate type (for the default instance) with a Default class
--- that is coerced to the embedded field of the newtype.
+
+-- | Default class for 'DefDefaultConstant' field configuration
+class (Generic a, GNewtype (Rep a)) => DefaultConstant a where
+  defValue :: Proxy a -> EmbeddedType (Rep a)
+
+-- | Use 'DefaultConstant' type as a default value for a field.
 --
 -- E.g. you cannot create a direct settings for real numbers; however, you can do this:
 --
--- > newtype Pi = Pi Double
--- > instance Default Pi where
--- >   def = 3.141592654
+-- > newtype Pi = Pi Double deriving Generic
+-- > instance DefaultConstant Pi where
+-- >   defValue _ = 3.141592654
 -- >
 -- > data MyObjectT d = MyObject {
--- >   phaseAngle :: DefaultField d (DefDefaultNewType Pi)
--- > }
-newtype DefDefaultNewType a = DefDefaultNewType (EmbeddedType (Rep a))
+-- >   phaseAngle :: DefaultField d (DefDefaultConstant Pi)
+-- > } deriving Generic
+newtype DefDefaultConstant a = DefDefaultConstant (EmbeddedType (Rep a))
   deriving (Generic)
-instance (Default a, FromJSON (EmbeddedType (Rep a)), Coercible a (EmbeddedType (Rep a))) => FromJSON (DefDefaultNewType a) where
-  omittedField = return (DefDefaultNewType $ coerce (def :: a))
-  parseJSON AE.Null = return (DefDefaultNewType $ coerce (def :: a))
-  parseJSON v = DefDefaultNewType <$> parseJSON v
+instance (DefaultConstant a, FromJSON (EmbeddedType (Rep a))) => FromJSON (DefDefaultConstant a) where
+  omittedField = return (DefDefaultConstant $ defValue (Proxy @a))
+  parseJSON AE.Null = return (DefDefaultConstant (defValue (Proxy @a)))
+  parseJSON v = DefDefaultConstant <$> parseJSON v
 
 -- | Kind for separating parsing with defaults and the final type
 data ParseStage = 
@@ -129,7 +136,7 @@ type family DefaultField (m :: ParseStage) a where
   DefaultField InsertDefaults a = a
   DefaultField Final a = EmbeddedType (Rep a)
 
--- | Copied from newtype-generics package; this way we get the type 'inside' the newtype
+-- | Copied from newtype-generics package; this way we get the type inside the newtype
 class GNewtype n where
   type EmbeddedType n :: Type -- ^ Type function to retrieve the type embedded in the newtype
 instance GNewtype (D1 d (C1 c (S1 s (K1 i a)))) where
@@ -164,12 +171,11 @@ parseWithDefaults opts v = do
 --   def = Red
 -- 
 -- -- Alternatively, we may create a separate default type that would be coerced back
--- -- to Color with 'DefDefaultNewType'. This allows for different default values
+-- -- to Color with 'DefDefaultConstant'. This allows for different default values
 -- -- with the same type for different fields.
--- newtype BlueDefault = BlueDefault Color
---   deriving Generic -- The Generic instance must be derived for the 'DefDefaultNewType'
--- instance 'Default' BlueDefault where
---   def = BlueDefault Blue
+-- newtype BlueDefault = BlueDefault Color deriving Generic
+-- instance 'DefaultConstant' BlueDefault where
+--   defValue _ = Blue
 -- 
 -- -- Simply create the data object we want to parse from the file; add a type parameter
 -- -- so that we can use the type family magic to create 2 different type representations.
@@ -182,7 +188,7 @@ parseWithDefaults opts v = do
 --   , defaultInt :: 'DefaultField' d ('DefInt' 42)
 --   , defaultNegativeInt :: 'DefaultField' d ('DefNegativeInt' 42)
 --   , defaultRed :: 'DefaultField' d ('DefDefault' Color)
---   , defaultBlue :: 'DefaultField' d ('DefDefaultNewType' BlueDefault)
+--   , defaultBlue :: 'DefaultField' d ('DefDefaultConstant' BlueDefault)
 --   , normalField :: T.Text
 --   , normalOptional :: Maybe Int
 -- } deriving (Generic)
