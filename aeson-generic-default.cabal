@@ -1,0 +1,74 @@
+cabal-version:      3.0
+name:               aeson-generic-default
+version:            0.1.0.0
+synopsis:           Type-level default fields for aeson Generic FromJSON parser
+-- description:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Ondrej Palkovsky
+maintainer:         palkovsky.ondrej@gmail.com
+-- copyright:
+category:           Web
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+common extensions
+  default-extensions:
+    AllowAmbiguousTypes
+    DataKinds
+    DeriveAnyClass
+    DeriveFunctor
+    DeriveGeneric
+    DerivingVia
+    DuplicateRecordFields
+    FlexibleContexts
+    FlexibleInstances
+    GeneralizedNewtypeDeriving
+    LambdaCase
+    MultiParamTypeClasses
+    MultiWayIf
+    NamedFieldPuns
+    NoMonomorphismRestriction
+    OverloadedStrings
+    OverloadedRecordDot
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+    GADTs
+    PatternSynonyms
+
+
+library
+    import:           warnings, extensions
+    exposed-modules:  Data.Aeson.DefaultField
+    build-depends:    
+                      base ^>=4.18.2.1
+                    , aeson >= 2.2
+                    , data-default
+                    , text
+    hs-source-dirs:   src
+    default-language: GHC2021
+
+test-suite aeson-default-field-test
+    import:           warnings, extensions
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    build-depends:
+        base ^>=4.18.2.1,
+        aeson-default-field,
+        tasty,
+        tasty-hunit,
+        tasty-smallcheck,
+        aeson
+
