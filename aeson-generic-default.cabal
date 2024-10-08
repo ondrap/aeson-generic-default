@@ -14,7 +14,7 @@ maintainer:         palkovsky.ondrej@gmail.com
 -- copyright:
 category:           Text, Web, JSON
 build-type:         Simple
-extra-doc-files:    CHANGELOG.md
+extra-doc-files:    CHANGELOG.md README.md
 tested-with:        GHC == 9.6.5, GHC == 9.10.1
 homepage:           https://github.com/ondrap/aeson-generic-default
 bug-reports:        https://github.com/ondrap/aeson-generic-default/issues
