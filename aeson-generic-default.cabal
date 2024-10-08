@@ -2,16 +2,22 @@ cabal-version:      3.0
 name:               aeson-generic-default
 version:            0.1.0.0
 synopsis:           Type-level default fields for aeson Generic FromJSON parser
--- description:
+description:        Define default values for missing FromJSON object fields within field type declaration. 
+
+                    It becomes handy e.g. for parsing yaml configuration files. The default values are mostly defined
+                    directly at the type level so that the user doesn't have to write manual FromJSON instance.
+
 license:            BSD-3-Clause
 license-file:       LICENSE
 author:             Ondrej Palkovsky
 maintainer:         palkovsky.ondrej@gmail.com
 -- copyright:
-category:           Web
+category:           Text, Web, JSON
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
--- extra-source-files:
+tested-with:        GHC == 9.6.5
+homepage:           https://github.com/ondrap/aeson-generic-default
+bug-reports:        https://github.com/ondrap/aeson-generic-default/issues
 
 common warnings
     ghc-options: -Wall
@@ -46,15 +52,14 @@ common extensions
     GADTs
     PatternSynonyms
 
-
 library
     import:           warnings, extensions
     exposed-modules:  Data.Aeson.DefaultField
     build-depends:    
-                      base ^>=4.18.2.1
-                    , aeson >= 2.2
-                    , data-default
-                    , text
+                      base ^>=4.18.2.1,
+                      aeson >= 2.2,
+                      data-default,
+                      text
     hs-source-dirs:   src
     default-language: GHC2021
 
@@ -66,9 +71,9 @@ test-suite aeson-default-field-test
     main-is:          Main.hs
     build-depends:
         base ^>=4.18.2.1,
-        aeson-default-field,
+        aeson-generic-default,
         tasty,
         tasty-hunit,
-        tasty-smallcheck,
-        aeson
-
+        aeson,
+        text,
+        data-default

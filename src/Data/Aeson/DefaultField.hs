@@ -53,52 +53,45 @@ import Data.Default (Default (def))
 newtype DefBool (a :: Bool) = DefBool Bool
   deriving (Generic)
 instance FromJSON (DefBool True) where
-  omittedField = return (DefBool True)
-  parseJSON AE.Null = return (DefBool True)
+  omittedField = Just (DefBool True)
   parseJSON v = DefBool <$> parseJSON v
 instance FromJSON (DefBool False) where
-  omittedField = return (DefBool False)
-  parseJSON AE.Null = return (DefBool False)
+  omittedField = Just (DefBool False)
   parseJSON v = DefBool <$> parseJSON v
 
 -- | Positive Int default field (only positive numbers are supported as type parameters)
 newtype DefInt (num :: Nat) = DefInt Int
   deriving (Generic)
 instance KnownNat num => FromJSON (DefInt num) where
-  omittedField = return (DefInt (fromIntegral $ natVal (Proxy @num)))
-  parseJSON AE.Null = return (DefInt (fromIntegral $ natVal (Proxy @num)))
+  omittedField = Just (DefInt (fromIntegral $ natVal (Proxy @num)))
   parseJSON v = DefInt <$> parseJSON v
 
 -- | Negative Int default field
 newtype DefNegativeInt (num :: Nat) = DefNegativeInt Int
   deriving (Generic)
 instance KnownNat num => FromJSON (DefNegativeInt num) where
-  omittedField = return (DefNegativeInt (negate $ fromIntegral $ natVal (Proxy @num)))
-  parseJSON AE.Null = return (DefNegativeInt (negate $ fromIntegral $ natVal (Proxy @num)))
+  omittedField = Just (DefNegativeInt (negate $ fromIntegral $ natVal (Proxy @num)))
   parseJSON v = DefNegativeInt <$> parseJSON v
 
 -- | Text default field
 newtype DefText (x :: Symbol) = DefText T.Text
   deriving (Generic)
 instance KnownSymbol sym => FromJSON (DefText sym) where
-  omittedField = return (DefText (fromString $ symbolVal (Proxy @sym)))
-  parseJSON AE.Null = return (DefText (fromString $ symbolVal (Proxy @sym)))
+  omittedField = Just (DefText (fromString $ symbolVal (Proxy @sym)))
   parseJSON v = DefText <$> parseJSON v
 
 -- | String default field
 newtype DefString (x :: Symbol) = DefString String
   deriving (Generic)
 instance KnownSymbol sym => FromJSON (DefString sym) where
-  omittedField = return (DefString (symbolVal (Proxy @sym)))
-  parseJSON AE.Null = return (DefString (symbolVal (Proxy @sym)))
+  omittedField = Just (DefString (symbolVal (Proxy @sym)))
   parseJSON v = DefString <$> parseJSON v
 
 -- | Default field using the "Default" class
 newtype DefDefault a = DefDefault a
   deriving (Generic)
 instance (FromJSON a, Default a) => FromJSON (DefDefault a) where
-  omittedField = return (DefDefault def)
-  parseJSON AE.Null = return (DefDefault def)
+  omittedField = Just (DefDefault def)
   parseJSON v = DefDefault <$> parseJSON v
 
 
@@ -120,8 +113,7 @@ class (Generic a, GNewtype (Rep a)) => DefaultConstant a where
 newtype DefDefaultConstant a = DefDefaultConstant (EmbeddedType (Rep a))
   deriving (Generic)
 instance (DefaultConstant a, FromJSON (EmbeddedType (Rep a))) => FromJSON (DefDefaultConstant a) where
-  omittedField = return (DefDefaultConstant $ defValue (Proxy @a))
-  parseJSON AE.Null = return (DefDefaultConstant (defValue (Proxy @a)))
+  omittedField = Just (DefDefaultConstant $ defValue (Proxy @a))
   parseJSON v = DefDefaultConstant <$> parseJSON v
 
 -- | Kind for separating parsing with defaults and the final type
@@ -180,7 +172,8 @@ parseWithDefaults opts v = do
 -- -- Simply create the data object we want to parse from the file; add a type parameter
 -- -- so that we can use the type family magic to create 2 different type representations.
 -- -- Normal fields act normally. Use 'DefaultField' with the appropriate settings
--- -- to configure the parsing of the missing fields.
+-- -- to configure the parsing of the missing fields. Null fields are NOT replaced
+-- -- with the default value; only missing fields are.
 -- data ConfigFileT d = ConfigFile {
 --     defaultEnabled :: 'DefaultField' d ('DefBool' True)
 --   , defaultDisabled :: 'DefaultField' d ('DefBool' False)
@@ -223,6 +216,9 @@ parseWithDefaults opts v = do
 -- fields for the objects. If a special type of configuration is needed, a /newtype/
 -- based on a final type must be created with 'Generic' and 'FromJSON' instances.
 -- See the source code for examples.
+--
+-- The default newtypes do not replace null value with the default value. You can create your own
+-- types that behave differently.
 
 -- $caveats
 --
