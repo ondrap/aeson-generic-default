@@ -48,7 +48,6 @@ import Data.Proxy (Proxy(..))
 import Data.String (fromString)
 import Data.Default (Default (def))
 
-
 -- | Boolean default field
 newtype DefBool (a :: Bool) = DefBool Bool
   deriving (Generic)
@@ -219,6 +218,14 @@ parseWithDefaults opts v = do
 --
 -- The default newtypes do not replace null value with the default value. You can create your own
 -- types that behave differently.
+--
+-- E.g. a configuration that could use the singletons package looks like this:
+--
+-- > newtype DefKind (a :: k) = DefKind (Demote k) deriving Generic
+-- > instance (SingI a, SingKind k, FromJSON (Demote k)) => FromJSON (DefKind (a :: k)) where
+-- >  omittedField = Just $ DefKind $ fromSing (sing @a)
+-- >  parseJSON v = DefKind <$> parseJSON v
+
 
 -- $caveats
 --
