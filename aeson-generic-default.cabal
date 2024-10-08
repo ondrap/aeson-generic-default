@@ -15,7 +15,7 @@ maintainer:         palkovsky.ondrej@gmail.com
 category:           Text, Web, JSON
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
-tested-with:        GHC == 9.6.5
+tested-with:        GHC == 9.6.5, GHC == 9.10.1
 homepage:           https://github.com/ondrap/aeson-generic-default
 bug-reports:        https://github.com/ondrap/aeson-generic-default/issues
 
@@ -56,10 +56,10 @@ library
     import:           warnings, extensions
     exposed-modules:  Data.Aeson.DefaultField
     build-depends:    
-                      base ^>=4.18.2.1,
-                      aeson >= 2.2,
-                      data-default,
-                      text
+                      base >=4.18 && < 4.21,
+                      aeson >= 2.2 && < 2.3,
+                      data-default >= 0.7 && < 0.8,
+                      text >= 2.0 && < 2.2
     hs-source-dirs:   src
     default-language: GHC2021
 
@@ -70,7 +70,7 @@ test-suite aeson-default-field-test
     hs-source-dirs:   test
     main-is:          Main.hs
     build-depends:
-        base ^>=4.18.2.1,
+        base,
         aeson-generic-default,
         tasty,
         tasty-hunit,
