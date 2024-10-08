@@ -221,14 +221,14 @@ parseWithDefaults opts v = do
 --
 -- E.g. a configuration that would use the singletons package is:
 --
--- > newtype DefKind (a :: k) = DefKind (Demote k) deriving Generic
--- > instance (SingI a, SingKind k, FromJSON (Demote k)) => FromJSON (DefKind (a :: k)) where
--- >  omittedField = Just $ DefKind $ fromSing (sing @a)
--- >  parseJSON v = DefKind <$> parseJSON v
+-- > newtype DefSing (a :: k) = DefSing (Demote k) deriving Generic
+-- > instance (SingI a, SingKind k, FromJSON (Demote k)) => FromJSON (DefSing (a :: k)) where
+-- >  omittedField = Just $ DefSing $ fromSing (sing @a)
+-- >  parseJSON v = DefSing <$> parseJSON v
 --
 -- The configuration would then be:
 --
--- > defaultBool :: DefaultField d (DefKind False)
+-- > defaultBool :: DefaultField d (DefSing False)
 
 -- $caveats
 --

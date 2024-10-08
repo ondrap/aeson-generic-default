@@ -45,14 +45,14 @@ The type-level configuration can be easily extended with newtypes, e.g. to creat
 layer with `singletons`:
 
 ```haskell
-newtype DefKind (a :: k) = DefKind (Demote k) deriving Generic
-instance (SingI a, SingKind k, FromJSON (Demote k)) => FromJSON (DefKind (a :: k)) where
-  omittedField = Just $ DefKind $ fromSing (sing @a)
-  parseJSON v = DefKind <$> parseJSON v
+newtype DefSing (a :: k) = DefSing (Demote k) deriving Generic
+instance (SingI a, SingKind k, FromJSON (Demote k)) => FromJSON (DefSing (a :: k)) where
+  omittedField = Just $ DefSing $ fromSing (sing @a)
+  parseJSON v = DefSing <$> parseJSON v
 ```
 
 And then the definition of the field can be for any singleton (e.g. Bool):
 
 ```haskell
-flag :: DefaultField d (DefKind True)
+flag :: DefaultField d (DefSing True)
 ```
