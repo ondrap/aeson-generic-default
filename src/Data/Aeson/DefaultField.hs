@@ -134,15 +134,19 @@ instance GNewtype (D1 d (C1 c (S1 s (K1 i a)))) where
   type EmbeddedType (D1 d (C1 c (S1 s (K1 i a)))) = a
 
 -- | 'genericParseJSON' drop-in replacement
-parseWithDefaults :: forall (o :: ParseStage -> Type) x. 
+parseWithDefaults :: forall (o :: ParseStage -> Type).
     (AE.GFromJSON AE.Zero (Rep (o InsertDefaults))
     , Generic (o InsertDefaults), Generic (o Final)
-    , Coercible (Rep (o InsertDefaults) x) (Rep (o Final) x)
+    , Coercible (Rep (o InsertDefaults)) (Rep (o Final))
     ) 
     => AE.Options -> AE.Value -> Parser (o Final)
-parseWithDefaults opts v = do
-  (dx :: o InsertDefaults) <- genericParseJSON opts v
-  return $ to @_ @x (coerce (from @_ @x dx))
+parseWithDefaults opts v =
+    gcoerce <$> genericParseJSON @(o InsertDefaults) opts v
+  where
+    -- Taken from generic-data
+    gcoerce = to . coerce1 . from
+    coerce1 :: Coercible f g => f x -> g x
+    coerce1 = coerce
 
 -- $use
 --
